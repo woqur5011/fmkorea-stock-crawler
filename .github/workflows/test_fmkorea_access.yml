@@ -1,0 +1,32 @@
+name: Test FMKorea Access
+
+on:
+  workflow_dispatch:  # 수동 실행만
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check FMKorea HTTP status
+        run: |
+          echo "Testing FMKorea access from GitHub Actions IP..."
+
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
+            --max-time 15 \
+            "https://www.fmkorea.com/search.php?mid=stock&search_keyword=3158413881&search_target=member_srl&page=1")
+
+          echo "HTTP Status: $STATUS"
+
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ 접근 가능 - GitHub Actions에서 크롤링 가능"
+          elif [ "$STATUS" = "430" ]; then
+            echo "❌ 430 차단 - 로컬 크롤링 방식 필요"
+          else
+            echo "⚠️  기타 상태코드: $STATUS"
+          fi
+
+      - name: Check public IP
+        run: |
+          echo "GitHub Actions IP:"
+          curl -s https://api.ipify.org
