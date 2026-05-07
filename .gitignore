@@ -1,0 +1,23 @@
+# Secrets (절대 커밋 금지)
+.streamlit/secrets.toml
+.env
+
+# 로컬 크롤링 진행 파일
+scripts/*_progress.json
+data/*_progress.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 구버전 폴더 및 루트 파일 (scripts/, data/로 이동)
+ha2mandx/
+seosaengwon/
+/analysis_cache.json
+/fmkorea_crawler.py
+/pre_analyze.py
+
+# 기타
+.DS_Store
+*.log
