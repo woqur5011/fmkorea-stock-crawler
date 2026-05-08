@@ -28,6 +28,10 @@ USERS = {
         "file": os.path.join(DATA_DIR, "seosaengwon_2026.json"),
         "name": "서생원",
     },
+    "son": {
+        "file": os.path.join(DATA_DIR, "son_2026.json"),
+        "name": "손흥민",
+    },
 }
 
 total_prompt = 0

@@ -23,6 +23,11 @@ USERS = {
         "nickname": "서생원",
         "file": os.path.join(DATA_DIR, "seosaengwon_2026.json"),
     },
+    "son": {
+        "search_url": "https://www.fmkorea.com/search.php?mid=stock&search_target=member_srl&search_keyword=224241",
+        "nickname": "손흥민",
+        "file": os.path.join(DATA_DIR, "son_2026.json"),
+    },
 }
 
 TARGET_YEAR   = 2026

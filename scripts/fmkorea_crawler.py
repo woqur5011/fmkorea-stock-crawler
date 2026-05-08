@@ -20,6 +20,10 @@ USERS = {
         'search_url': 'https://www.fmkorea.com/search.php?mid=stock&category=&search_keyword=%EC%84%9C%EC%83%9D%EC%9B%90&search_target=nick_name',
         'nickname': '서생원',
     },
+    'son': {
+        'search_url': 'https://www.fmkorea.com/search.php?mid=stock&search_target=member_srl&search_keyword=224241',
+        'nickname': '손흥민',
+    },
 }
 
 # ── 공통 설정 ─────────────────────────────────────────────────────────────────
@@ -249,10 +253,10 @@ def main():
     search_url = cfg['search_url']
     nickname = cfg['nickname']
 
-    base_dir = os.path.join(os.path.dirname(__file__), user_key)
-    os.makedirs(base_dir, exist_ok=True)
-    output_file   = os.path.join(base_dir, f'{user_key}_{TARGET_YEAR}.json')
-    progress_file = os.path.join(base_dir, f'{user_key}_progress.json')
+    data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
+    os.makedirs(data_dir, exist_ok=True)
+    output_file   = os.path.join(data_dir, f'{user_key}_{TARGET_YEAR}.json')
+    progress_file = os.path.join(data_dir, f'{user_key}_progress.json')
 
     print(f'{"="*60}')
     print(f'FMKorea 크롤러 - {nickname} ({user_key})')

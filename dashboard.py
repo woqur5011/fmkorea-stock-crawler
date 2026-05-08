@@ -16,13 +16,17 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 def load_data():
     ha2 = json.load(open(os.path.join(DATA_DIR, "ha2mandx_2026.json"), encoding="utf-8"))
     seo = json.load(open(os.path.join(DATA_DIR, "seosaengwon_2026.json"), encoding="utf-8"))
+    son_path = os.path.join(DATA_DIR, "son_2026.json")
+    son = json.load(open(son_path, encoding="utf-8")) if os.path.exists(son_path) else []
     cache_path = os.path.join(DATA_DIR, "analysis_cache.json")
     cache = json.load(open(cache_path, encoding="utf-8")) if os.path.exists(cache_path) else {}
     for p in ha2:
         p["user"] = "HA2MANDX"
     for p in seo:
         p["user"] = "서생원"
-    return ha2, seo, cache
+    for p in son:
+        p["user"] = "손흥민"
+    return ha2, seo, son, cache
 
 
 def extract_date(date_str):
@@ -73,8 +77,8 @@ def render_post(p):
 
 
 # ── 메인 ─────────────────────────────────────────────────────────────────────
-ha2, seo, cache = load_data()
-all_posts = ha2 + seo
+ha2, seo, son, cache = load_data()
+all_posts = ha2 + seo + son
 
 # 최근 수집일 계산
 all_dates = [extract_date(p.get("date", "")) for p in all_posts]
@@ -101,19 +105,23 @@ with tab1:
     else:
         col1, col2 = st.columns(2)
 
+        col1, col2, col3 = st.columns(3)
+
         with col1:
             st.subheader("HA2MANDX")
-            content = cache.get("ha2mandx_philosophy", "분석 결과 없음")
-            st.markdown(content)
+            st.markdown(cache.get("ha2mandx_philosophy", "분석 결과 없음"))
 
         with col2:
             st.subheader("서생원")
-            content = cache.get("seosaengwon_philosophy", "분석 결과 없음")
-            st.markdown(content)
+            st.markdown(cache.get("seosaengwon_philosophy", "분석 결과 없음"))
+
+        with col3:
+            st.subheader("손흥민")
+            st.markdown(cache.get("son_philosophy", "분석 결과 없음"))
 
         if "comparison" in cache:
             st.divider()
-            st.subheader("🔍 두 사람 비교")
+            st.subheader("🔍 비교 분석")
             st.markdown(cache["comparison"])
 
 # ── Tab 2: 게시글 탐색 ───────────────────────────────────────────────────────
@@ -122,7 +130,7 @@ with tab2:
     with st.container():
         col1, col2, col3 = st.columns([1, 2, 2])
         with col1:
-            user_sel = st.selectbox("유저", ["전체", "HA2MANDX", "서생원"])
+            user_sel = st.selectbox("유저", ["전체", "HA2MANDX", "서생원", "손흥민"])
         with col2:
             date_from = st.date_input("시작일", value=pd.to_datetime("2026-01-01").date())
         with col3:
@@ -135,6 +143,8 @@ with tab2:
         pool = ha2
     elif user_sel == "서생원":
         pool = seo
+    elif user_sel == "손흥민":
+        pool = son
     else:
         pool = all_posts
 
@@ -170,39 +180,23 @@ with tab3:
             format_func=lambda x: f"2026년 {month_labels[x]}",
         )
 
-        col1, col2 = st.columns(2)
+        def render_monthly_col(user_key, nickname, posts_list):
+            st.subheader(f"{nickname} - {month_labels[month_sel]}")
+            content = cache["monthly"].get(user_key, {}).get(str(month_sel))
+            if content:
+                st.markdown(content)
+            else:
+                st.info("해당 월 분석 없음")
+            month_posts = [p for p in posts_list if re.search(rf'2026\.{month_sel:02d}\.', p.get("date", ""))]
+            if month_posts:
+                with st.expander(f"📋 {month_labels[month_sel]} 게시글 목록 ({len(month_posts)}개)"):
+                    for p in sorted(month_posts, key=lambda x: x.get("date",""), reverse=True):
+                        st.markdown(f"- [{p['title']}](https://www.fmkorea.com/{p['id']}) `{p['date']}`")
 
+        col1, col2, col3 = st.columns(3)
         with col1:
-            st.subheader(f"HA2MANDX - {month_labels[month_sel]}")
-            content = cache["monthly"].get("ha2mandx", {}).get(str(month_sel))
-            if content:
-                st.markdown(content)
-            else:
-                st.info("해당 월 분석 없음")
-
-            # 해당 월 게시글 링크
-            month_posts_ha2 = [
-                p for p in ha2
-                if re.search(rf'2026\.{month_sel:02d}\.', p.get("date", ""))
-            ]
-            if month_posts_ha2:
-                with st.expander(f"📋 {month_labels[month_sel]} 게시글 목록 ({len(month_posts_ha2)}개)"):
-                    for p in sorted(month_posts_ha2, key=lambda x: x.get("date",""), reverse=True):
-                        st.markdown(f"- [{p['title']}](https://www.fmkorea.com/{p['id']}) `{p['date']}`")
-
+            render_monthly_col("ha2mandx", "HA2MANDX", ha2)
         with col2:
-            st.subheader(f"서생원 - {month_labels[month_sel]}")
-            content = cache["monthly"].get("seosaengwon", {}).get(str(month_sel))
-            if content:
-                st.markdown(content)
-            else:
-                st.info("해당 월 분석 없음")
-
-            month_posts_seo = [
-                p for p in seo
-                if re.search(rf'2026\.{month_sel:02d}\.', p.get("date", ""))
-            ]
-            if month_posts_seo:
-                with st.expander(f"📋 {month_labels[month_sel]} 게시글 목록 ({len(month_posts_seo)}개)"):
-                    for p in sorted(month_posts_seo, key=lambda x: x.get("date",""), reverse=True):
-                        st.markdown(f"- [{p['title']}](https://www.fmkorea.com/{p['id']}) `{p['date']}`")
+            render_monthly_col("seosaengwon", "서생원", seo)
+        with col3:
+            render_monthly_col("son", "손흥민", son)
