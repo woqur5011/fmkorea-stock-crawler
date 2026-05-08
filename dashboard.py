@@ -12,7 +12,7 @@ BASE_DIR = os.path.dirname(__file__)
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
 # ── 데이터 로드 ───────────────────────────────────────────────────────────────
-@st.cache_data
+@st.cache_data(ttl=3600)  # 1시간마다 자동 갱신
 def load_data():
     ha2 = json.load(open(os.path.join(DATA_DIR, "ha2mandx_2026.json"), encoding="utf-8"))
     seo = json.load(open(os.path.join(DATA_DIR, "seosaengwon_2026.json"), encoding="utf-8"))
@@ -81,9 +81,16 @@ all_dates = [extract_date(p.get("date", "")) for p in all_posts]
 all_dates = [d for d in all_dates if d is not None]
 latest_date = max(all_dates).date() if all_dates else None
 
-st.title("📈 FMKorea 투자자 분석 대시보드")
-if latest_date:
-    st.caption(f"HA2MANDX · 서생원 | 2026년 게시글 기반 | 최근 수집일: **{latest_date.strftime('%Y.%m.%d')}**")
+col_title, col_refresh = st.columns([8, 1])
+with col_title:
+    st.title("📈 FMKorea 투자자 분석 대시보드")
+    if latest_date:
+        st.caption(f"HA2MANDX · 서생원 | 2026년 게시글 기반 | 최근 수집일: **{latest_date.strftime('%Y.%m.%d')}**")
+with col_refresh:
+    st.write("")
+    if st.button("🔄 새로고침"):
+        st.cache_data.clear()
+        st.rerun()
 
 tab1, tab2, tab3 = st.tabs(["🧠 핵심 투자 철학", "📋 게시글 탐색", "📅 월별 인사이트"])
 
