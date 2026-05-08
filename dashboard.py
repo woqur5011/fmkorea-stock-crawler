@@ -76,8 +76,14 @@ def render_post(p):
 ha2, seo, cache = load_data()
 all_posts = ha2 + seo
 
+# 최근 수집일 계산
+all_dates = [extract_date(p.get("date", "")) for p in all_posts]
+all_dates = [d for d in all_dates if d is not None]
+latest_date = max(all_dates).date() if all_dates else None
+
 st.title("📈 FMKorea 투자자 분석 대시보드")
-st.caption("HA2MANDX · 서생원 | 2026년 게시글 기반")
+if latest_date:
+    st.caption(f"HA2MANDX · 서생원 | 2026년 게시글 기반 | 최근 수집일: **{latest_date.strftime('%Y.%m.%d')}**")
 
 tab1, tab2, tab3 = st.tabs(["🧠 핵심 투자 철학", "📋 게시글 탐색", "📅 월별 인사이트"])
 
@@ -113,7 +119,7 @@ with tab2:
         with col2:
             date_from = st.date_input("시작일", value=pd.to_datetime("2026-01-01").date())
         with col3:
-            date_to = st.date_input("종료일", value=pd.to_datetime("2026-05-07").date())
+            date_to = st.date_input("종료일", value=latest_date if latest_date else pd.to_datetime("2026-05-07").date())
 
     keyword = st.text_input("🔍 키워드 검색 (제목 + 본문)", placeholder="예: 반도체, 코스피, 삼성")
 
