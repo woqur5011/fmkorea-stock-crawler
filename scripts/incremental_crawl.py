@@ -28,6 +28,11 @@ USERS = {
         "nickname": "손흥민",
         "file": os.path.join(DATA_DIR, "son_2026.json"),
     },
+    "ronny": {
+        "search_url": "https://www.fmkorea.com/search.php?mid=stock&search_target=member_srl&search_keyword=3911745652",
+        "nickname": "Ronny_",
+        "file": os.path.join(DATA_DIR, "ronny_2026.json"),
+    },
 }
 
 TARGET_YEAR   = 2026

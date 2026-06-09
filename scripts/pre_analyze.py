@@ -32,6 +32,10 @@ USERS = {
         "file": os.path.join(DATA_DIR, "son_2026.json"),
         "name": "손흥민",
     },
+    "ronny": {
+        "file": os.path.join(DATA_DIR, "ronny_2026.json"),
+        "name": "Ronny_",
+    },
 }
 
 total_prompt = 0
@@ -164,9 +168,13 @@ def main(incremental=False):
 
     data = {}
     for key, cfg in USERS.items():
-        with open(cfg["file"], encoding="utf-8") as f:
-            data[key] = json.load(f)
-        print(f"{cfg['name']}: {len(data[key])}개 게시글 로드")
+        if os.path.exists(cfg["file"]):
+            with open(cfg["file"], encoding="utf-8") as f:
+                data[key] = json.load(f)
+            print(f"{cfg['name']}: {len(data[key])}개 게시글 로드")
+        else:
+            data[key] = []
+            print(f"{cfg['name']}: 파일 없음 - 스킵")
 
     if not incremental:
         # 전체 분석: 철학 + 비교 + 모든 월
@@ -196,7 +204,7 @@ def main(incremental=False):
         months = [current_month]
 
     if "monthly" not in cache:
-        cache["monthly"] = {"ha2mandx": {}, "seosaengwon": {}}
+        cache["monthly"] = {"ha2mandx": {}, "seosaengwon": {}, "son": {}, "ronny": {}}
 
     for month in months:
         for key, cfg in USERS.items():

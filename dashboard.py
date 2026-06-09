@@ -18,6 +18,8 @@ def load_data():
     seo = json.load(open(os.path.join(DATA_DIR, "seosaengwon_2026.json"), encoding="utf-8"))
     son_path = os.path.join(DATA_DIR, "son_2026.json")
     son = json.load(open(son_path, encoding="utf-8")) if os.path.exists(son_path) else []
+    ronny_path = os.path.join(DATA_DIR, "ronny_2026.json")
+    ronny = json.load(open(ronny_path, encoding="utf-8")) if os.path.exists(ronny_path) else []
     cache_path = os.path.join(DATA_DIR, "analysis_cache.json")
     cache = json.load(open(cache_path, encoding="utf-8")) if os.path.exists(cache_path) else {}
     for p in ha2:
@@ -26,7 +28,9 @@ def load_data():
         p["user"] = "서생원"
     for p in son:
         p["user"] = "손흥민"
-    return ha2, seo, son, cache
+    for p in ronny:
+        p["user"] = "Ronny_"
+    return ha2, seo, son, ronny, cache
 
 
 def extract_date(date_str):
@@ -77,8 +81,8 @@ def render_post(p):
 
 
 # ── 메인 ─────────────────────────────────────────────────────────────────────
-ha2, seo, son, cache = load_data()
-all_posts = ha2 + seo + son
+ha2, seo, son, ronny, cache = load_data()
+all_posts = ha2 + seo + son + ronny
 
 # 최근 수집일 계산
 all_dates = [extract_date(p.get("date", "")) for p in all_posts]
@@ -89,7 +93,7 @@ col_title, col_refresh = st.columns([8, 1])
 with col_title:
     st.title("📈 FMKorea 투자자 분석 대시보드")
     if latest_date:
-        st.caption(f"HA2MANDX · 서생원 | 2026년 게시글 기반 | 최근 수집일: **{latest_date.strftime('%Y.%m.%d')}**")
+        st.caption(f"HA2MANDX · 서생원 · 손흥민 · Ronny_ | 2026년 게시글 기반 | 최근 수집일: **{latest_date.strftime('%Y.%m.%d')}**")
 with col_refresh:
     st.write("")
     if st.button("🔄 새로고침"):
@@ -103,9 +107,7 @@ with tab1:
     if not cache:
         st.warning("분석 캐시가 없습니다. 먼저 `python pre_analyze.py`를 실행해주세요.")
     else:
-        col1, col2 = st.columns(2)
-
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
 
         with col1:
             st.subheader("HA2MANDX")
@@ -119,6 +121,10 @@ with tab1:
             st.subheader("손흥민")
             st.markdown(cache.get("son_philosophy", "분석 결과 없음"))
 
+        with col4:
+            st.subheader("Ronny_")
+            st.markdown(cache.get("ronny_philosophy", "분석 결과 없음"))
+
         if "comparison" in cache:
             st.divider()
             st.subheader("🔍 비교 분석")
@@ -130,7 +136,7 @@ with tab2:
     with st.container():
         col1, col2, col3 = st.columns([1, 2, 2])
         with col1:
-            user_sel = st.selectbox("유저", ["전체", "HA2MANDX", "서생원", "손흥민"])
+            user_sel = st.selectbox("유저", ["전체", "HA2MANDX", "서생원", "손흥민", "Ronny_"])
         with col2:
             date_from = st.date_input("시작일", value=pd.to_datetime("2026-01-01").date())
         with col3:
@@ -145,6 +151,8 @@ with tab2:
         pool = seo
     elif user_sel == "손흥민":
         pool = son
+    elif user_sel == "Ronny_":
+        pool = ronny
     else:
         pool = all_posts
 
@@ -158,7 +166,7 @@ with tab2:
     else:
         # 목록 표시 (최대 100개)
         for p in filtered[:100]:
-            user_badge = "🔵" if p["user"] == "HA2MANDX" else "🟢"
+            user_badge = {"HA2MANDX": "🔵", "서생원": "🟢", "손흥민": "🟡", "Ronny_": "🔴"}.get(p["user"], "⚪")
             comment_cnt = len(p.get("comments", []))
             has_img = "🖼️" if "[이미지 파싱]" in p.get("body", "") else ""
             label = f"{user_badge} {p['user']} | {p['date']} | {p['title']} {has_img} | 💬{comment_cnt}"
@@ -193,10 +201,12 @@ with tab3:
                     for p in sorted(month_posts, key=lambda x: x.get("date",""), reverse=True):
                         st.markdown(f"- [{p['title']}](https://www.fmkorea.com/{p['id']}) `{p['date']}`")
 
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             render_monthly_col("ha2mandx", "HA2MANDX", ha2)
         with col2:
             render_monthly_col("seosaengwon", "서생원", seo)
         with col3:
             render_monthly_col("son", "손흥민", son)
+        with col4:
+            render_monthly_col("ronny", "Ronny_", ronny)
