@@ -1,8 +1,8 @@
 """
-사전 분석 스크립트 - GPT로 두 유저 게시글 분석 후 캐시 저장
+사전 분석 스크립트 - GPT로 유저 게시글 분석 후 캐시 저장
 실행:
   python scripts/pre_analyze.py             # 전체 분석
-  python scripts/pre_analyze.py --incremental  # 현재 달만 재분석
+  python scripts/pre_analyze.py --incremental  # 현재 달만 재분석 + 비교 분석 갱신
 """
 import json, re, httpx, os, sys
 from datetime import datetime
@@ -45,7 +45,7 @@ total_completion = 0
 def gpt(prompt, max_tokens=1500):
     global total_prompt, total_completion
     resp = client.chat.completions.create(
-        model="gpt-5.4",
+        model=os.environ.get("AZURE_MODEL", "gpt-5.4"),
         messages=[{"role": "user", "content": prompt}],
         max_completion_tokens=max_tokens,
     )
@@ -94,7 +94,7 @@ def analyze_philosophy(user_name, posts):
 1. **주장명**: 요약 / > "대표 발언 인용"
 ...
 
-## 현재 시장 전망 (2026년 5월 기준)
+## 현재 시장 전망 (2026년 기준)
 (이 사람이 지금 시장을 어떻게 보는지, 포지션 추정)
 
 ---
@@ -107,10 +107,10 @@ def analyze_monthly(user_name, posts, month):
     month_posts = [p for p in posts if extract_month(p.get("date", "")) == month]
     if not month_posts:
         return None
-    print(f"  {month}월 분석 중 ({len(month_posts)}개 게시글)...")
+    print(f"  {month}월 분析 중 ({len(month_posts)}개 게시글)...")
     text = posts_to_text(month_posts)
     prompt = f"""아래는 '{user_name}'이(가) 2026년 {month}월에 작성한 게시글입니다.
-이 달의 시장 상황 맥락에서 이 사람이 무엇을 주장했는지 분석해주세요.
+이 달의 시장 상황 맥락에서 이 사람이 무엇을 주장했는지 분析해주세요.
 
 **결과 형식 (마크다운):**
 
@@ -133,30 +133,29 @@ def analyze_monthly(user_name, posts, month):
     return gpt(prompt, max_tokens=1200)
 
 
-def analyze_comparison(ha2_philosophy, seo_philosophy):
-    print("  두 사람 비교 분석 중...")
-    prompt = f"""아래는 두 주식 투자자의 핵심 투자 철학 분석입니다.
+def analyze_comparison(philosophies: dict):
+    """philosophies: {nickname: philosophy_text} — 철학 분析 완료된 유저만 전달"""
+    names = list(philosophies.keys())
+    print(f"  비교 분析 중 ({', '.join(names)})...")
+    sections = "\n\n".join(f"=== {name} ===\n{text}" for name, text in philosophies.items())
+    prompt = f"""아래는 주식 커뮤니티 투자자들의 핵심 투자 철학 분析입니다.
 
-=== HA2MANDX ===
-{ha2_philosophy}
+{sections}
 
-=== 서생원 ===
-{seo_philosophy}
-
-두 사람의 투자 관점을 비교 분석해주세요.
+이 투자자들의 관점을 비교 분析해주세요.
 
 **결과 형식 (마크다운):**
 
 ## 공통 주장
-(두 사람이 공통적으로 믿는 것들)
+(모두가 공통적으로 믿는 것들)
 
 ## 시각 차이
-(의견이 다른 부분, 접근 방식 차이)
+(의견이 다른 부분, 접근 방식 차이 — 인물 간 구체적 비교)
 
 ## 상호 보완 포인트
-(두 관점을 합치면 얻을 수 있는 인사이트)
+(각 관점을 합치면 얻을 수 있는 인사이트)
 """
-    return gpt(prompt, max_tokens=1000)
+    return gpt(prompt, max_tokens=1200)
 
 
 def main(incremental=False):
@@ -177,42 +176,50 @@ def main(incremental=False):
             print(f"{cfg['name']}: 파일 없음 - 스킵")
 
     if not incremental:
-        # 전체 분석: 철학 + 비교 + 모든 월
+        # 전체 분析: 철학 + 모든 월
         for key, cfg in USERS.items():
+            if not data[key]:
+                continue
             cache_key = f"{key}_philosophy"
             if cache_key not in cache:
-                print(f"\n[{cfg['name']}] 전체 철학 분석")
+                print(f"\n[{cfg['name']}] 전체 철학 분析")
                 cache[cache_key] = analyze_philosophy(cfg["name"], data[key])
                 _save(cache)
             else:
                 print(f"[{cfg['name']}] 전체 철학 캐시 있음 - 스킵")
 
-        if "comparison" not in cache:
-            print("\n[비교 분석]")
-            cache["comparison"] = analyze_comparison(
-                cache["ha2mandx_philosophy"], cache["seosaengwon_philosophy"]
-            )
-            _save(cache)
-        else:
-            print("[비교 분석] 캐시 있음 - 스킵")
-
         months = range(1, 13)
     else:
-        # 증분 분석: 현재 달만 재분석
+        # 증분 분析: 현재 달만
         current_month = datetime.now().month
-        print(f"\n[증분 모드] {current_month}월만 재분석")
+        print(f"\n[증분 모드] {current_month}월만 재분析")
         months = [current_month]
 
+    # 비교 분析: 전체/증분 모두 항상 재실행 (철학 캐시 있는 유저만 포함)
+    philosophies = {
+        cfg["name"]: cache[f"{key}_philosophy"]
+        for key, cfg in USERS.items()
+        if f"{key}_philosophy" in cache
+    }
+    if len(philosophies) >= 2:
+        print("\n[비교 분析]")
+        cache["comparison"] = analyze_comparison(philosophies)
+        _save(cache)
+    else:
+        print("[비교 분析] 철학 분析된 유저 2명 미만 - 스킵")
+
     if "monthly" not in cache:
-        cache["monthly"] = {"ha2mandx": {}, "seosaengwon": {}, "son": {}, "ronny": {}}
+        cache["monthly"] = {key: {} for key in USERS}
 
     for month in months:
         for key, cfg in USERS.items():
             if key not in cache["monthly"]:
                 cache["monthly"][key] = {}
-            # 증분 모드에서는 현재 달 강제 재분석
+            if not data[key]:
+                continue
+            # 증분 모드에서는 현재 달 강제 재분析
             if incremental or str(month) not in cache["monthly"].get(key, {}):
-                print(f"\n[{cfg['name']}] {month}월 분석")
+                print(f"\n[{cfg['name']}] {month}월 분析")
                 result = analyze_monthly(cfg["name"], data[key], month)
                 if result:
                     cache["monthly"][key][str(month)] = result
@@ -222,7 +229,7 @@ def main(incremental=False):
 
     cost = total_prompt * 2.50 / 1e6 + total_completion * 10.0 / 1e6
     print(f"\n{'='*50}")
-    print(f"분석 완료!")
+    print(f"분析 완료!")
     print(f"토큰: 입력 {total_prompt:,} / 출력 {total_completion:,}")
     print(f"비용: ${cost:.4f} (약 {cost*1400:.0f}원)")
 
